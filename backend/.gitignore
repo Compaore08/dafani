@@ -1,0 +1,14 @@
+# Environnement virtuel
+env/
+venv/
+ENV/
+
+# Fichiers dotenv (variables d'environnement)
+.env
+.env.*
+
+# Fichiers de configuration IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
