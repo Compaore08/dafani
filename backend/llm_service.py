@@ -4,25 +4,22 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# 🔐 Clé Groq
 GROQ_API_KEY = os.getenv("GROQ_API_KEY")
 if not GROQ_API_KEY:
-    raise ValueError("GROQ_API_KEY non trouvée dans .env")
+    raise RuntimeError("❌ GROQ_API_KEY manquante dans le .env")
 
-# URL OpenAI Compatible de Groq
 BASE_URL = "https://api.groq.com/openai/v1/chat/completions"
 
-# Modèle Groq à utiliser
-MODEL = "mixtral-8x7b-32768"  # exemple de modèle performant :contentReference[oaicite:4]{index=4}
+# ✅ Modèle OFFICIEL recommandé par Groq
+MODEL = "llama-3.1-8b-instant"
 
-# Contexte officiel DAFANI
 DAFANI_CONTEXT = """
-Tu es un assistant officiel qui répond uniquement sur l’entreprise DAFANI S.A.
+Tu es un assistant officiel de l’entreprise DAFANI S.A.
 
 INFORMATIONS DAFANI :
 - Secteur : Industrie agroalimentaire
-- Activité : Transformation de fruits tropicaux en jus et nectars
-- Produits : Nectar mangue, nectar orange, cocktails mangue-orange, mangue-ananas-passion
+- Activité : Transformation de fruits tropicaux
+- Produits : Nectar mangue, nectar orange, cocktails
 - Formats : 0,5 L et 1 L
 - Localisation : Orodara, Burkina Faso
 - Téléphone : (+226) 20 99 53 53
@@ -33,30 +30,29 @@ INFORMATIONS DAFANI :
 RÈGLES :
 - Réponds uniquement avec ces informations
 - N’invente rien
-- Si l’information n’existe pas, dis : "Information non disponible chez Dafani"
+- Sinon répond : "Information non disponible chez Dafani"
 """
 
 def ask_dafani_groq(question: str) -> str:
-    prompt = f"{DAFANI_CONTEXT}\n\nQUESTION : {question}"
+    payload = {
+        "model": MODEL,
+        "messages": [
+            {"role": "system", "content": DAFANI_CONTEXT},
+            {"role": "user", "content": question}
+        ],
+        "temperature": 0.4,
+        "max_tokens": 512
+    }
 
     headers = {
         "Authorization": f"Bearer {GROQ_API_KEY}",
         "Content-Type": "application/json"
     }
 
-    data = {
-        "model": MODEL,
-        "messages": [
-            {"role": "system", "content": "Tu es un assistant utile."},
-            {"role": "user", "content": prompt}
-        ],
-        "temperature": 0.7
-    }
+    response = requests.post(BASE_URL, json=payload, headers=headers)
 
-    response = requests.post(BASE_URL, json=data, headers=headers)
-    response.raise_for_status()
+    # 🔴 Important pour voir l’erreur Groq si elle revient
+    if response.status_code != 200:
+        raise RuntimeError(response.text)
 
-    # Récupère la réponse texte
-    result = response.json()
-    # La structure est compatible OpenAI → on prend choices[0].message.content
-    return result["choices"][0]["message"]["content"]
+    return response.json()["choices"][0]["message"]["content"]

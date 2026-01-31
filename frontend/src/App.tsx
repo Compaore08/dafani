@@ -1,35 +1,23 @@
-import React, { useState, useRef, useEffect, type FormEvent } from 'react'
-import axios from 'axios'
-import './App.css'
+import { useState, useEffect, useRef, type FormEvent } from "react"
+import axios from "axios"
+import "./App.css"
 
-const API_URL = 'http://localhost:8000' // Assurez-vous que FastAPI tourne ici
-
-type Role = 'user' | 'assistant'
+const API_URL = "http://127.0.0.1:8000"
 
 type Message = {
-  role: Role
+  role: "user" | "assistant"
   content: string
-}
-
-type ChatResponse = {
-  response: string
-  conversation_id: string
 }
 
 function App() {
   const [messages, setMessages] = useState<Message[]>([])
-  const [input, setInput] = useState<string>('')
-  const [loading, setLoading] = useState<boolean>(false)
-  const [conversationId, setConversationId] = useState<string | null>(null)
+  const [input, setInput] = useState("")
+  const [loading, setLoading] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
-
   useEffect(() => {
-    scrollToBottom()
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
   const sendMessage = async (e: FormEvent) => {
@@ -37,33 +25,31 @@ function App() {
     if (!input.trim() || loading) return
 
     const userMessage = input.trim()
-    setInput('')
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }])
+    setInput("")
+    setMessages(prev => [...prev, { role: "user", content: userMessage }])
     setLoading(true)
 
     try {
-      const { data } = await axios.post<ChatResponse>(
+      const response = await axios.post(
         `${API_URL}/chat`,
-        {
-          message: userMessage,
-          conversation_id: conversationId,
-        },
+        { message: userMessage },
         { timeout: 30000 }
       )
 
-      if (!conversationId) setConversationId(data.conversation_id)
-
-      setMessages(prev => [...prev, { role: 'assistant', content: data.response }])
+      setMessages(prev => [
+        ...prev,
+        { role: "assistant", content: response.data.response }
+      ])
     } catch (error: any) {
-      let errorMessage = '❌ Erreur : '
-      if (error.code === 'ECONNABORTED') {
-        errorMessage += 'Temps de réponse dépassé.'
-      } else if (error.response) {
-        errorMessage += error.response.data.detail || 'Erreur serveur.'
-      } else {
-        errorMessage += 'Impossible de joindre le serveur.'
-      }
-      setMessages(prev => [...prev, { role: 'assistant', content: errorMessage }])
+      setMessages(prev => [
+        ...prev,
+        {
+          role: "assistant",
+          content:
+            error?.response?.data?.detail ||
+            "❌ Erreur serveur. Veuillez réessayer."
+        }
+      ])
     } finally {
       setLoading(false)
     }
@@ -71,58 +57,80 @@ function App() {
 
   const resetConversation = () => {
     setMessages([])
-    setConversationId(null)
-    setInput('')
+    setInput("")
   }
 
   return (
     <div className="app">
       <div className="chat-container">
-        <div className="chat-header">
-          <h1>💬 Support Client AI – Dafani</h1>
-          <button onClick={resetConversation} className="btn-reset">
-            Nouvelle conversation
-          </button>
-        </div>
 
-        <div className="messages-container">
+        <header className="chat-header">
+          <div className="header-content">
+            <h1>🤖 Support Dafani</h1>
+            <p>Votre assistant intelligent</p>
+          </div>
+          <button onClick={resetConversation} className="reset-btn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+              <path d="M21 3v5h-5"/>
+              <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+              <path d="M3 21v-5h5"/>
+            </svg>
+          </button>
+        </header>
+
+        <div className="messages">
           {messages.length === 0 && (
-            <div className="welcome-message">
-              <h2>Bienvenue 👋</h2>
-              <p>Posez votre question sur les produits Dafani.</p>
+            <div className="welcome">
+              <div className="welcome-icon">💬</div>
+              <h2>Bienvenue !</h2>
+              <p>Posez vos questions sur nos produits et services</p>
             </div>
           )}
 
-          {messages.map((msg, idx) => (
-            <div key={idx} className={`message ${msg.role}`}>
-              <div className="message-avatar">{msg.role === 'user' ? '👤' : '🤖'}</div>
-              <div className="message-content">{msg.content}</div>
+          {messages.map((msg, index) => (
+            <div key={index} className={`message ${msg.role}`}>
+              <div className="message-avatar">
+                {msg.role === "user" ? "👤" : "🤖"}
+              </div>
+              <div className="message-content">
+                <p>{msg.content}</p>
+              </div>
             </div>
           ))}
 
           {loading && (
             <div className="message assistant">
               <div className="message-avatar">🤖</div>
-              <div className="message-content">Réponse en cours...</div>
+              <div className="message-content loading-content">
+                <div className="typing-indicator">
+                  <span></span>
+                  <span></span>
+                  <span></span>
+                </div>
+              </div>
             </div>
           )}
 
           <div ref={messagesEndRef} />
         </div>
 
-        <form onSubmit={sendMessage} className="input-container">
+        <form onSubmit={sendMessage} className="input-area">
           <input
             type="text"
+            placeholder="Écrivez votre message..."
             value={input}
             onChange={e => setInput(e.target.value)}
-            placeholder="Tapez votre message..."
             disabled={loading}
-            className="message-input"
           />
-          <button type="submit" disabled={loading || !input.trim()} className="btn-send">
-            📤
+          <button type="submit" disabled={loading || !input.trim()}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M22 2L11 13"/>
+              <path d="M22 2l-7 20-4-9-9-4 20-7z"/>
+            </svg>
           </button>
         </form>
+
       </div>
     </div>
   )
