@@ -4,6 +4,8 @@ from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 from typing import Optional
 import uuid
+import os
+import uvicorn
 
 from llm_service import ask_dafani_groq
 
@@ -35,3 +37,8 @@ async def chat(req: ChatRequest):
     except Exception as e:
         print("❌ ERREUR BACKEND :", e)
         raise HTTPException(status_code=500, detail=str(e))
+
+# Point d'entrée pour Render
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8000))  # Render fournit le port via une variable d'environnement
+    uvicorn.run(app, host="0.0.0.0", port=port)
